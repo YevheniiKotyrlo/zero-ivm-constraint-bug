@@ -35,14 +35,16 @@ jobs:
 
       - name: Run reproduction test
         run: |
-          set +e
+          set -o pipefail
           npm test 2>&1 | tee test-output.txt
-          TEST_EXIT=$?
+
+      - name: Write test output to summary
+        if: always()
+        run: |
           echo "## Reproduction test" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat test-output.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          exit $TEST_EXIT
 
       - name: Zero-cache logs
         if: always()
