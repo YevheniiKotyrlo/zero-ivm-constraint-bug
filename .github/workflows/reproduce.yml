@@ -1,0 +1,68 @@
+name: Reproduce Bug
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start infrastructure
+        run: |
+          docker compose up -d --build --wait
+          npx tsx scripts/deploy-permissions.ts
+          docker compose restart zero-cache
+          sleep 3
+
+      - name: Verify services
+        run: |
+          echo "=== Docker containers ==="
+          docker compose ps
+          echo ""
+          echo "=== API health check ==="
+          curl -s http://localhost:3099/ || echo "API not responding"
+          echo ""
+          echo "=== Zero version ==="
+          docker compose exec zero-cache cat /opt/zero/package.json 2>/dev/null | grep version || echo "Could not read version"
+
+      - name: Install Playwright
+        run: npx playwright install chromium
+
+      - name: Start dev server
+        run: npm run dev &
+
+      - name: Wait for dev server
+        run: npx wait-on http://localhost:5199 --timeout 15000
+
+      - name: Run reproduction test
+        run: npm test
+
+      - name: Zero-cache logs
+        if: always()
+        run: docker compose logs zero-cache --tail 100
+
+      - name: API server logs
+        if: always()
+        run: docker compose logs api --tail 50
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7

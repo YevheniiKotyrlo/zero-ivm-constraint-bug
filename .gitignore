@@ -1,0 +1,8 @@
+node_modules/
+dist/
+test-results/
+.idea/
+*.db
+*.db-wal
+*.db-shm
+*.db-wal2

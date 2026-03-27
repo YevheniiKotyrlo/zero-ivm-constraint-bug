@@ -1,0 +1,11 @@
+node_modules
+test-results
+.git
+.idea
+*.db
+*.db-wal
+*.db-shm
+*.db-wal2
+app
+e2e
+docker

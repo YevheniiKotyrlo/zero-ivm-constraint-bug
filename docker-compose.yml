@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    healthcheck:
+      test: 'pg_isready -U user'
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    ports:
+      - '5499:5432'
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: password
+    command: |
+      postgres
+      -c wal_level=logical
+      -c max_wal_senders=10
+      -c max_replication_slots=5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker:/docker-entrypoint-initdb.d
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    healthcheck:
+      test: 'wget -qO- http://localhost:3099/ || exit 1'
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    ports:
+      - '3099:3099'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  zero-cache:
+    image: rocicorp/zero:latest
+    ports:
+      - '4899:4848'
+    environment:
+      ZERO_UPSTREAM_DB: postgresql://user:password@postgres:5432/postgres
+      ZERO_CVR_DB: postgresql://user:password@postgres:5432/postgres
+      ZERO_CHANGE_DB: postgresql://user:password@postgres:5432/postgres
+      ZERO_REPLICA_FILE: /tmp/zero-repro.db
+      ZERO_NUM_SYNC_WORKERS: 1
+      ZERO_LOG_LEVEL: info
+      ZERO_ADMIN_PASSWORD: repro
+      ZERO_QUERY_URL: http://api:3099/api/zero/query
+      ZERO_MUTATE_URL: http://api:3099/api/zero/mutate
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    driver: local
