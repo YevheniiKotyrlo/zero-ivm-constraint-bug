@@ -6,5 +6,7 @@ export default defineConfig({
   use: {
     headless: true,
     baseURL: 'http://localhost:5199',
+    trace: 'on-first-retry',
   },
+  reporter: [['list'], ['json', {outputFile: 'test-results/results.json'}]],
 });
