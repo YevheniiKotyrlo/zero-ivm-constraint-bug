@@ -22,22 +22,7 @@ jobs:
         run: npm ci
 
       - name: Start infrastructure
-        run: |
-          docker compose up -d --build --wait
-          npx tsx scripts/deploy-permissions.ts
-          docker compose restart zero-cache
-          sleep 3
-
-      - name: Verify services
-        run: |
-          echo "=== Docker containers ==="
-          docker compose ps
-          echo ""
-          echo "=== API health check ==="
-          curl -s http://localhost:3099/ || echo "API not responding"
-          echo ""
-          echo "=== Zero version ==="
-          docker compose exec zero-cache cat /opt/zero/package.json 2>/dev/null | grep version || echo "Could not read version"
+        run: npm run setup
 
       - name: Install Playwright
         run: npx playwright install chromium
