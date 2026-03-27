@@ -34,7 +34,23 @@ jobs:
         run: npx wait-on http://localhost:5199 --timeout 15000
 
       - name: Run reproduction test
-        run: npm test
+        id: test
+        continue-on-error: true
+        run: npm test 2>&1 | tee test-output.txt
+
+      - name: Show test result
+        if: always()
+        run: |
+          echo "## Reproduction test result" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat test-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if bug still exists
+        if: steps.test.outcome == 'failure'
+        run: |
+          echo "::error::Bug reproduced — .limit(0).related() crashes during poke processing. See test output above."
+          exit 1
 
       - name: Zero-cache logs
         if: always()
@@ -46,7 +62,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-results
           path: test-results/
